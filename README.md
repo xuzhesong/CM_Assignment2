@@ -63,25 +63,25 @@ The unittest is applicated in this project, to validate the performance of the M
 
 1. For the median filter, different lengths were explored to test the effectiveness of the restoration. In particular, 50 points were tested and length=3 was observed to deliver the lowest MSE, as shown in the figure below.  
 
-<img src="median_mse.png" width="350"> 
+<img src="median_mse.png" width="700"> 
 
 The restored waveform <output_medianFilter.wav> with the optimal filter length is given below:  
 
-<img src="restored_median.png" width="350"> 
+<img src="restored_median.png" width="700"> 
 
 2. Using the cubic splines, we observe that the overall trend is downward with the decrease of window length.  
 
-<img src="cubicspline_mse.png" width="350">
+<img src="cubicspline_mse.png" width="700">
 
 The restored waveform <output_cubicSplines.wav> with the optimal filter length is given below (it seems similar than median filter, but it is actully a different method and have lower MSE):  
 
-<img src="restored_spline.png" width="350">
+<img src="restored_spline.png" width="700">
 
 3. Comparing the two different interpolation methods, we notice that cubic spline method achieves a lower MSE. The runtime of cubic spline method is 0.00052(0.026s/50times)
 
 After listening to the two restored files, we notice that both method has restored the audio successfully, but the spline has a better performance, the best window length is 21, the lowest mse is 0.0013823992500444158. For median filter the best window length is 3, the lowest mse is 0.00414724701515107  
 
-<img src="MSE.png" width="350">
+<img src="MSE.png" width="700">
 
 ---
 ## Credits
