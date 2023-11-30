@@ -1,14 +1,15 @@
 import wave
+import unittest
+import winsound # play sound in Windows
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import CubicSpline
 from scipy.io import wavfile
-from math import ceil
-import unittest
 from tqdm import tqdm
-window_length_median = 3
-window_length_spline = 11
-num_points = 100
+
+window_length_median = 3   #window length of median
+window_length_spline = 11  #window length of spline
+num_points = 50  #number of points to test
 
 
 ##########################################################################
@@ -72,6 +73,12 @@ def median_filter(audio, detection, window_length):
         restored: the restored signal after median interpolation
 
     '''
+    # test if window length is odd
+    if window_length % 2 == 0:
+        print('the window length you set is :', window_length)
+        print('the window length should be an odd number')
+        return
+
     l = len(audio)
     restored = audio.copy()
     n = window_length // 2
@@ -94,6 +101,12 @@ def cubic_spline_filter(degraded, detection, window_length):
     Return:
         y: the restored signal
     '''
+    # test if window length is odd
+    if window_length % 2 == 0:
+        print('the window length you set is :', window_length)
+        print('the window length should be an odd number')
+        return
+
     l = len(degraded)
     y = degraded.copy()
     n = window_length // 2
@@ -141,19 +154,33 @@ def test(clean, degraded, detection, num_points):
     mse_median = [0] * num_points
     mse_spline = [0] * num_points
     win_size = [0] * num_points
-    low_win = 0
-    low_mse = 1
+    low_win_spline = 0
+    low_mse_spline = 1
+    low_win_median = 0
+    low_mse_median = 1
     for i in tqdm(range(1, num_points)):
+        # set a window length with odd number
         win_size[i] = i * 2 + 1
+        # resotre the signal with both two method
         restored_median = median_filter(degraded, detection, win_size[i])
         restored_spline = cubic_spline_filter(degraded, detection, win_size[i])
+        # compute the mse for both two method
         mse_median[i] = compute_MSE(clean, restored_median, detection)
         mse_spline[i] = compute_MSE(clean, restored_spline, detection)
-        if mse_spline[i] < low_mse:
-            low_win = win_size[i]
-            low_mse = mse_spline[i]
-    print('low_win = ', low_win)
-    print('low_mse = ', low_mse)
+        # find the window length with least mse (for median method)
+        if mse_spline[i] < low_mse_spline:
+            low_win_spline = win_size[i]
+            low_mse_spline = mse_spline[i]
+        # find the window length with least mse (for cubic spline method)
+        if mse_median[i] < low_mse_median:
+            low_win_median = win_size[i]
+            low_mse_median = mse_median[i]
+    # show the least mse and its window length for both method
+    print('low_win_spline = ', low_win_spline)
+    print('low_mse_spline = ', low_mse_spline)
+    print('low_win_median = ', low_win_median)
+    print('low_mse_median = ', low_mse_median)
+
     # plot the MSE in one figure
     plt.figure(figsize=(10, 5))
 
@@ -172,15 +199,19 @@ def test(clean, degraded, detection, num_points):
 
 ##########################################################################
 '''read audio from .wav files'''
+# read degraded audio
 with wave.open('degraded.wav', 'rb') as degraded_audio:
-
+    # sampling rate
     frame_rate = degraded_audio.getframerate()
+    # number of frames
     n_frames = degraded_audio.getnframes()
-
+    # read frames
     degraded = degraded_audio.readframes(n_frames)
+    # transfer the frames to np array
     degraded = np.frombuffer(degraded, dtype=np.int16)
     degraded = degraded / 2**15
 
+# read clean audio
 with wave.open('clean.wav', 'rb') as clean_audio:
 
     n_frames = clean_audio.getnframes()
@@ -189,6 +220,7 @@ with wave.open('clean.wav', 'rb') as clean_audio:
     clean = np.frombuffer(clean, dtype=np.int16)
     clean = clean / 2**16
 
+# read detection wave
 with wave.open('detection.wav', 'rb') as detection_file:
 
     n_frames = detection_file.getnframes()
@@ -198,48 +230,70 @@ with wave.open('detection.wav', 'rb') as detection_file:
     detection = detection / 2**15
 
 # restored by median method
-restored = median_filter(degraded, detection, window_length_median)
+restored_median = median_filter(degraded, detection, window_length_median)
 # restored by cubic spline method
-#restored = cubic_spline_filter(degraded, detection, window_length_spline)
+restored_spline = cubic_spline_filter(degraded, detection, window_length_spline)
 
 # compute the MSE for the restored signal
-mse = compute_MSE(clean, restored, detection)
-print('mse = ', mse)
-
-# run test function
-#test(clean, degraded, detection, num_points)
-
-# restored = restored * 2 ** 16
-# restored = restored.astype(np.int16)
-# wavfile.write('output_cubicSplines.wav', frame_rate, restored)
-
+mse_median = compute_MSE(clean, restored_median, detection)
+mse_spline = compute_MSE(clean, restored_spline, detection)
+print('mse_median = ', mse_median)
+print('mse_spline = ', mse_spline)
 
 # plot the degraded, clean, restored signal
 plt.figure(figsize=(10, 5))
 
-plt.subplot(3, 1, 1)
+plt.subplot(4, 1, 1)
 plt.plot(degraded)
 plt.title('degraded')
 plt.ylim(-1, 1)
 
 
-plt.subplot(3, 1, 2)
+plt.subplot(4, 1, 2)
 plt.plot(clean)
 plt.title('clean')
 plt.ylim(-1, 1)
 
 
-plt.subplot(3, 1, 3)
-plt.plot(restored)
-plt.title('restored')
+plt.subplot(4, 1, 3)
+plt.plot(restored_median)
+plt.title('restored_median')
+plt.ylim(-1, 1)
+
+plt.subplot(4, 1, 4)
+plt.plot(restored_spline)
+plt.title('restored_spline')
 plt.ylim(-1, 1)
 
 plt.show()
 
+
+##########################################################################
+# restore to file
+
+restored_spline = restored_spline * 2 ** 16
+restored_spline = restored_spline.astype(np.int16)
+wavfile.write('output_cubicSplines.wav', frame_rate, restored_spline)
+
+restored_median = restored_median  * 2 ** 16
+restored_median  = restored_median .astype(np.int16)
+wavfile.write('output_median.wav', frame_rate, restored_median )
+
+
+##########################################################################
+# run test function
+test(clean, degraded, detection, num_points)
+
+##########################################################################
+# play the sound
+#filename = 'output_median.wav'
+filename = 'output_cubicSplines.wav'
+winsound.PlaySound(filename, winsound.SND_FILENAME)
+
 ##########################################################################
 # unittest
 
-
+# test if the result of function Median() is equal to library functino np.median
 class TestMethods(unittest.TestCase):
     ''' unittest '''
 
@@ -247,7 +301,7 @@ class TestMethods(unittest.TestCase):
         for i in range(0, len(degraded) - 1):
             n = window_length_median // 2
             if (detection[i] == 0):
-                array = restored[i - n: i + n + 1].copy()
+                array = restored_median[i - n: i + n + 1].copy()
                 M = np.median(array)
                 m = Median(array)
                 self.assertEqual(m, M)
